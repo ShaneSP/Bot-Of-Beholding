@@ -1,0 +1,22 @@
+{
+    "name": "bot-of-beholding",
+    "version": "0.0.1",
+    "description": "Bot of Beholding",
+    "main": "main.ts",
+    "author": "Shane Steele-Pardue",
+    "scripts": {
+        "start": "npm run test && node main.js",
+        "test": "mocha tests.ts"
+    },
+    "dependencies": {
+        "discord.js": "^11.5.1"
+    },
+    "devDependencies": {
+        "@types/mocha": "^5.2.7",
+        "@types/node": "^12.6.8",
+        "chai": "^4.2.0",
+        "mocha": "^6.2.0",
+        "ts-node": "^8.3.0",
+        "typescript": "^3.5.3"
+    }
+}
