@@ -21,7 +21,7 @@
 * change prefix command
 * set command to handle changing attributes
 * add command to handle equipment, gold, etc
-* lookup command (5e SRD)
+* ~~lookup command (5e SRD)~~
 * initiative tracking
 * homebrew support
 * game state
