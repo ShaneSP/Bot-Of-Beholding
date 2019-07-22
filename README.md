@@ -5,17 +5,17 @@
 ## Functionality
 `!ping`: Responds in channel with "Pong."
 
-`!roll`: Provided number of times to roll and an x-sided dice, returns consecutive rolls and total.
+`!roll`: Provided a number of times to roll and an x-sided dice, returns consecutive rolls and total.
 * Usage: `!roll [Number of rolls]d[Sides of dice] (optional secret flag)`
 * Example: `!roll 2d4`
 
 ## TODO - Proposed additional functionality
 * !roll
   * consider adapting to accept dice modifiers
-  * adding advantage/disadvantage options
+  * ~~adding advantage/disadvantage options~~
 * command so that users can add custom macros with existing commands
 * command that allows users to add their spells, cantrips, attacks
-* add help command
+* ~~add help command~~
 * character creation command
 * switch between characters command
 * change prefix command
@@ -24,3 +24,5 @@
 * lookup command (5e SRD)
 * initiative tracking
 * homebrew support
+* game state
+* event log (dm only)

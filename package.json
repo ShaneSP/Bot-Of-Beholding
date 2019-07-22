@@ -5,7 +5,7 @@
     "main": "main.ts",
     "author": "Shane Steele-Pardue",
     "scripts": {
-        "start": "npm run test && node main.js",
+        "start": "npm run test && node ./src/main.js",
         "test": "mocha tests.ts"
     },
     "dependencies": {

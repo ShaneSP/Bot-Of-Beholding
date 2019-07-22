@@ -1,5 +1,8 @@
 let Discord = require('discord.js');
 let config = require('./config.json');
+let help = require('./data/help.json');
+let monsters = require('./data/monsters.json');
+let spells = require('./data/spells.json');
 // Configure logger settings
 // Initialize Discord Bot
 let bot = new Discord.Client({
@@ -7,13 +10,11 @@ let bot = new Discord.Client({
    autorun: true
 });
 
-bot.on('ready', function (evt) {
+bot.on('ready', function (event) {
     console.log('Bot is running');
 });
 
 bot.on('message', async message => {
-    // Our bot needs to know if it will execute a command
-    // It will listen for messages that will start with `!`
     if(message.author.bot) return;
 
     if(message.content.indexOf(config.prefix) !== 0) return;
@@ -21,42 +22,121 @@ bot.on('message', async message => {
     const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
     const command = args.shift().toLowerCase();
     
-    
     switch(command) {
-        // !ping
-        case 'ping':
-            message.channel.send('Pong.');
+        case 'help': {
+            const subcmd = args.shift().toLowerCase();
+            if(!help[subcmd]) {
+                message.author.send("Unknown command: " + subcmd);
+                return;
+            }
+            let opts = help[subcmd].options;
+            let text = "Usage: " + help[subcmd].usage + "\n" + 
+                                   help[subcmd].description + "\n" +
+                                   "Example: `" + help[subcmd].example + "`\n" + 
+                                   (opts.length > 0 ? "Options:\n" : "");
+            
+            for(let i = 0; i < opts.length; i++) {
+                text += "  " + opts[i].short + ",  " + opts[i].name + " ".repeat(30 - opts[i].name.length) + opts[i].description + "\n"
+            }
+            message.author.send(text)
+        }
         break;
         case 'roll':
-            // TODO: consider adapting to accept dice modifiers
-            // TODO: adding advantage/disadvantage options
+            // TODO?: consider adapting to accept dice modifiers?
 
-            if(!args[0].match(/[0-9]*d(4|6|8|12|20)/) || args.length < 1) { 
-                message.channel.send("Usage: \"[Number of rolls]d[Sides of dice] (optional secret flag)\"\nEntered: " + args[0]); 
-                return; 
+            if(!args[0].match(/[0-9]*d(4|6|8|12|20)/) || args.length < 1) {
+                message.channel.send("Usage: "+ help.roll.usage + "\nEntered: " + args[0]);
+                return;
             }
-
-            let rolls = args[0].substring(0, args[0].indexOf('d'));
-            let sides = args[0].substring(args[0].indexOf('d') + 1);
+            
+            // Get xdy arg, i.e. '2d4'
+            let xdy = args.shift().toLowerCase();
+            let rolls = xdy.substring(0, xdy.indexOf('d'));
+            let sides = xdy.substring(xdy.indexOf('d') + 1);
 
             if(rolls > config.maxRolls) {
                 message.channel.send("Exceeds max dice rolls, " + config.maxRolls + ", are you trying to make BoB roll a constitution check?");
                 return;
             }
+
+            // First set of rolls
             let rollArray = roll(rolls, sides);
+
+            // Check for dis- and advantage flags, modify rollArray as appropriate
+            if(args.includes('-a') || args.includes('adv')) {
+                let advRoll = roll(rolls, sides);
+                for(let i = 0; i < advRoll.length; i++) {
+                    if(advRoll[i] > rollArray[i]) {
+                        rollArray[i] = advRoll[i];
+                    }
+                }
+            } else if(args.includes('-d') || args.includes('dis')) {
+                let disRoll = roll(rolls, sides);
+                for(let i = 0; i < disRoll.length; i++) {
+                    if(disRoll[i] < rollArray[i]) {
+                        rollArray[i] = disRoll[i];
+                    }
+                }
+            }
+
             let count = 1;
             let rollToStringArray = rollArray.map(e => "Dice " + (count++) + ": " + e + "\n");
-            let text = rollToStringArray.reduce(add) + "Total: " + rollArray.reduce(add);
-            if(args[1] && args[1].equals("secret") || args[1].equals("-s")) {
+            let total = rollArray.reduce(add);
+            let text = rollToStringArray.reduce(add) + "Total: " + (total == 1 ? total + "\n*Be gentle...*" : total);
+
+            // Check for secret flag to determine where to return response.
+            if(args.includes("secret") || args.includes("-s")) {
                 message.author.send(text);
             } else {
                 message.channel.send(text);
             }
         break;
+        case 'lookup': {
+            let book = args.shift().toLowerCase();
+            let ref = null;
+            if(!book.match(/spells|monsters/)) {
+                message.channel.send("Unknown text: " + book + ". Perhaps Xanathar deserves a visit.");
+                return;
+            } else if(book == "spells") {
+                ref = spells;
+            } else if(book == "monsters") {
+                ref = monsters;
+            }
+            
+            let original = args.shift();
+            let search = original.toLowerCase();
+            let result = ref.filter((entry) => {
+                if(entry["name"] && entry["name"].toLowerCase().match(search)) {
+                    return true;
+                }
+                return false;
+            });
+            
+            let text = "";
+            if(result.length > 1) {
+                text += "Found multiple results for " + original + ": " + result.reduce(addStrings);
+            } else if(result.length == 1) {
+                for(let field in result[0]) {
+                    if(result[0][field].length > 0) {
+                        if(result[0][field] instanceof Array) {
+                            // handle printing json
+                        } else {
+                            text += "## " + field[0].toUpperCase() + field.substring(1) + ": \n" + result[0][field] + "\n"
+                        }
+                    }
+                }
+            } else {
+                message.channel.send("No results for " + original + ".");
+                return;
+            }
+
+            message.channel.send("```md\n" + text + "\n```");
+
+        }
+        break;
         /**
          * TODO: command so that users can add custom macros with existing commands
          * TODO: command that allows users to add their spells, cantrips, attacks
-         * TODO: add help command
          * TODO: character creation command
          * TODO: switch between characters command
          * TODO: change prefix command
@@ -65,8 +145,9 @@ bot.on('message', async message => {
          * TODO: lookup command (5e SRD)
          * TODO: initiative tracking
          * TODO: homebrew support
+         * TODO: game state
          * */  
-        }
+    }
 });
 
 /**
@@ -95,6 +176,10 @@ let roll = (rolls, sides) => {
  */
 let add = (total, current) => {
     return total + current;
+}
+
+let addStrings = (total, current) => {
+    return total + ", " + current["name"];
 }
 
 bot.login(config.token);

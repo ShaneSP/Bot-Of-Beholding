@@ -2,7 +2,6 @@ let main = require('./src/main.ts');
 let assert = require('assert');
 
 describe('!roll', () => {
-
   /**
    * Tests for roll() helper function to ensure valid results are returned.
    */
@@ -22,6 +21,5 @@ describe('!roll', () => {
       assert(main.roll(0, sides).length == 0);
     })
   });
-
-  
 });
+
