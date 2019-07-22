@@ -2,4 +2,5 @@
 /node_modules
 
 # data
-./src/data
+/src/data/monsters.json
+/src/data/monsters.json
