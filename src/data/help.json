@@ -1,0 +1,30 @@
+{
+    "roll": {
+        "usage": "!roll [Number of rolls]d[Sides of dice] [OPTION]",
+        "description": "Provided a number of times to roll and an x-sided dice, returns consecutive rolls and total.",
+        "example": "!roll 2d4",
+        "options": [
+            {
+                "short": "-a",
+                "name": "advantage",
+                "description": "flag to roll ALL dice with advantage"
+            },
+            {
+                "short": "-d",
+                "name": "disadvantage",
+                "description": "flag to roll ALL dice with disadvantage"
+            },
+            {
+                "short": "-s",
+                "name": "secret",
+                "description": "flag to PM results of roll(s) to author"
+            }
+        ]
+    },
+    "help": {
+        "usage": "!help <command_name>",
+        "description": "Detailed help message for given command",
+        "example": "!help roll",
+        "options": []
+    }
+}
