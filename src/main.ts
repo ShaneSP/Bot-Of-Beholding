@@ -1,14 +1,11 @@
-let Discord = require('discord.js');
+import { Client, RichEmbed, ClientOptions } from 'discord.js';
 let config = require('./config.json');
 let help = require('./data/help.json');
 let monsters = require('./data/monsters.json');
 let spells = require('./data/spells.json');
 // Configure logger settings
 // Initialize Discord Bot
-let bot = new Discord.Client({
-   token: config.token,
-   autorun: true
-});
+let bot = new Client();
 
 bot.on('ready', function (event) {
     console.log('Bot is running');
@@ -92,46 +89,28 @@ bot.on('message', async message => {
             }
         break;
         case 'lookup': {
-            // TODO: handle exact matches, and multi-word names, i.e. - "Giant Crocodile"
-            // TODO: handle full entries, not just lvl 0 of the JSON object
-            // TODO: handle number values and format differently than string values
-            // TODO: write/rewrite functions to accommodate formatting
             let book = args.shift().toLowerCase();
-            let ref = null;
+            let longDesc = args.includes("-l");
+            let isRegex = args.includes("-r");
+            let search = "";
+
+            while(args[0] && !args[0].match('-.*')) {
+                search += args.shift() + " "
+            }
+            search = search.substring(0, search.length - 1);
+            
             if(!book.match(/spells|monsters/)) {
                 message.channel.send("Unknown text: " + book + ". Perhaps Xanathar deserves a visit.");
                 return;
-            } else if(book == "spells") {
-                ref = spells;
-            } else if(book == "monsters") {
-                ref = monsters;
             }
             
-            let original = args.shift();
-            let search = original.toLowerCase();
-            let result = ref.filter((entry) => {
-                if(entry["name"] && entry["name"].toLowerCase().match(search)) {
-                    return true;
-                }
-                return false;
-            });
-            
-            let text = "";
-            if(result.length > 1) {
-                text += "Found multiple results for " + original + ": \n" + result.reduce(listStrings);
-            } else if(result.length == 1) {
-                text += jsonToString(result[0], 0);
-            } else {
-                message.channel.send("No results for " + original + ".");
-                return;
-            }
-
-            let firstBreak = text.indexOf('\n') + 1;
-            let titleIndex = text.indexOf('\n', firstBreak + 1);
-            const embed = new Discord.RichEmbed()
-                                     .setTitle(text.substring(firstBreak, titleIndex))
-                                     .setDescription(text.substring(text.indexOf('\n', titleIndex), text.length));
+            let result: RichEmbedJSON = lookup(book, search, longDesc, isRegex);
+            let embed: RichEmbed = parseRichEmbed(result.title, result.desc);
             message.channel.send(embed);
+
+            if(args.includes("-s")) {
+                // Call send message with secret flag true
+            }
         }
         break;
         /**
@@ -195,6 +174,79 @@ let jsonToString = (obj, lvl) => {
             }
         }
     }
+    return output;
+}
+
+let parseRichEmbed = (title, desc, color = 'WHITE'): RichEmbed => {
+    let embed = new RichEmbed()
+                      .setTitle(title)
+                      .setDescription(desc)
+                      .setColor(color);
+    return embed;
+}
+
+interface RichEmbedJSON {
+    title: string,
+    desc: string,
+    color?: string
+}
+
+/**
+ * Lookup Functions
+ * @param book : name of ancient tome to search within
+ * @param search : search string
+ * @param longDesc? : (optional) return long  description
+ * @param isRegex? : (optional) treat search string as regex
+ */
+let lookup = (book, search, longDesc, isRegex): RichEmbedJSON  => {
+    // TODO: handle exact matches, and multi-word names, i.e. - "Giant Crocodile"
+    // TODO: handle full entries, not just lvl 0 of the JSON object
+    // TODO: handle number values and format differently than string values
+    // TODO: write/rewrite functions to accommodate formatting
+    
+    let ref = null;
+    if(book == "spells") {
+        ref = spells;
+    } else if(book == "monsters") {
+        ref = monsters;
+    }
+
+    let lowercase = search.toLowerCase();
+    let exactMatch = null;
+    let result = [];
+    for(let entry in ref) {
+        if(ref[entry]["name"] && ref[entry]["name"].toLowerCase().match(lowercase)) {
+            if(ref[entry]["name"] == search) {
+                exactMatch = ref[entry];
+                break;
+            }
+            result.push(ref[entry]);
+        }
+    }
+
+    let output: RichEmbedJSON = {
+        title: "",
+        desc: ""
+    };
+    let text = "";
+    if(exactMatch != null) {
+        text += jsonToString(exactMatch, 0);
+    } else if(result.length > 1) {
+        output.title = "Found multiple results for " + search;
+        output.desc = result.reduce(listStrings);
+        return output;
+    } else if(result.length == 1) {
+        text += jsonToString(result[0], 0);
+    } else {
+        output.title = "No results for **" + search + "**.";
+        return output;
+    }
+
+    let firstBreak = text.indexOf('\n') + 1;
+    let titleIndex = text.indexOf('\n', firstBreak + 1);
+    output.title = text.substring(firstBreak, titleIndex);
+    output.desc = text.substring(text.indexOf('\n', titleIndex), text.length);
+
     return output;
 }
 
