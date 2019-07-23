@@ -92,6 +92,10 @@ bot.on('message', async message => {
             }
         break;
         case 'lookup': {
+            // TODO: handle exact matches, and multi-word names, i.e. - "Giant Crocodile"
+            // TODO: handle full entries, not just lvl 0 of the JSON object
+            // TODO: handle number values and format differently than string values
+            // TODO: write/rewrite functions to accommodate formatting
             let book = args.shift().toLowerCase();
             let ref = null;
             if(!book.match(/spells|monsters/)) {
@@ -114,24 +118,20 @@ bot.on('message', async message => {
             
             let text = "";
             if(result.length > 1) {
-                text += "Found multiple results for " + original + ": " + result.reduce(addStrings);
+                text += "Found multiple results for " + original + ": \n" + result.reduce(listStrings);
             } else if(result.length == 1) {
-                for(let field in result[0]) {
-                    if(result[0][field].length > 0) {
-                        if(result[0][field] instanceof Array) {
-                            // handle printing json
-                        } else {
-                            text += "## " + field[0].toUpperCase() + field.substring(1) + ": \n" + result[0][field] + "\n"
-                        }
-                    }
-                }
+                text += jsonToString(result[0], 0);
             } else {
                 message.channel.send("No results for " + original + ".");
                 return;
             }
 
-            message.channel.send("```md\n" + text + "\n```");
-
+            let firstBreak = text.indexOf('\n') + 1;
+            let titleIndex = text.indexOf('\n', firstBreak + 1);
+            const embed = new Discord.RichEmbed()
+                                     .setTitle(text.substring(firstBreak, titleIndex))
+                                     .setDescription(text.substring(text.indexOf('\n', titleIndex), text.length));
+            message.channel.send(embed);
         }
         break;
         /**
@@ -178,8 +178,24 @@ let add = (total, current) => {
     return total + current;
 }
 
-let addStrings = (total, current) => {
-    return total + ", " + current["name"];
+let listStrings = (total, current) => {
+    return total + ", \n" + current["name"];
+}
+
+let jsonToString = (obj, lvl) => {
+    let output = "";
+    for(let field in obj) {
+        if(obj[field].length > 0) {
+            if(obj[field] instanceof Array) {
+                // for(let i = 0; i < obj[field].length; i++) {
+                //     output += jsonToString(obj[field][i], ++lvl);
+                // }
+            } else {
+                output += " ".repeat(2 * lvl) + "**" + field[0].toUpperCase() + field.substring(1) + "**:\n" + obj[field] + "\n"
+            }
+        }
+    }
+    return output;
 }
 
 bot.login(config.token);
