@@ -21,6 +21,7 @@ bot.on('message', async message => {
     
     switch(command) {
         case 'help': {
+            // incorrect use of help command response
             const subcmd = args.shift().toLowerCase();
             if(!help[subcmd]) {
                 message.author.send("Unknown command: " + subcmd);
@@ -41,7 +42,7 @@ bot.on('message', async message => {
         case 'roll':
             // TODO?: consider adapting to accept dice modifiers?
 
-            if(!args[0].match(/[0-9]*d(4|6|8|12|20)/) || args.length < 1) {
+            if(!args[0].match(/[0-9]*d(4|6|8|10|12|20)/) || args.length < 1) {
                 message.channel.send("Usage: "+ help.roll.usage + "\nEntered: " + args[0]);
                 return;
             }
@@ -91,7 +92,6 @@ bot.on('message', async message => {
         case 'lookup': {
             let book = args.shift().toLowerCase();
             let longDesc = args.includes("-l");
-            let isRegex = args.includes("-r");
             let search = "";
 
             while(args[0] && !args[0].match('-.*')) {
@@ -104,9 +104,16 @@ bot.on('message', async message => {
                 return;
             }
             
-            let result: RichEmbedJSON = lookup(book, search, longDesc, isRegex);
-            let embed: RichEmbed = parseRichEmbed(result.title, result.desc);
-            message.channel.send(embed);
+            let result: RichEmbedJSON = lookup(book, search, longDesc);
+            if(result.desc.length > 2048) {
+                // Have to react twice to switch pages
+                // undefined at the top
+                let pages: RichEmbed[] = paginate(result.title, result.desc);
+                paginationEmbed(message, pages);
+            } else {
+                let embed: RichEmbed = parseRichEmbed(result.title, result.desc);
+                message.channel.send(embed);
+            }
 
             if(args.includes("-s")) {
                 // Call send message with secret flag true
@@ -136,7 +143,7 @@ bot.on('message', async message => {
  * 
  * @returns array of dice roll results
  */
-let roll = (rolls, sides) => { 
+const roll = (rolls, sides) => { 
     if(rolls <= 0) {
         return [];
     }
@@ -153,15 +160,15 @@ let roll = (rolls, sides) => {
  * @param total 
  * @param current 
  */
-let add = (total, current) => {
+const add = (total, current) => {
     return total + current;
 }
 
-let listStrings = (total, current) => {
+const listStrings = (total, current) => {
     return total + ", \n" + current["name"];
 }
 
-let jsonToString = (obj, lvl) => {
+const jsonToString = (obj, lvl) => {
     let output = "";
     for(let field in obj) {
         if(obj[field].length > 0) {
@@ -177,7 +184,7 @@ let jsonToString = (obj, lvl) => {
     return output;
 }
 
-let parseRichEmbed = (title, desc, color = 'WHITE'): RichEmbed => {
+const parseRichEmbed = (title, desc, color = 'WHITE'): RichEmbed => {
     let embed = new RichEmbed()
                       .setTitle(title)
                       .setDescription(desc)
@@ -196,9 +203,8 @@ interface RichEmbedJSON {
  * @param book : name of ancient tome to search within
  * @param search : search string
  * @param longDesc? : (optional) return long  description
- * @param isRegex? : (optional) treat search string as regex
  */
-let lookup = (book, search, longDesc, isRegex): RichEmbedJSON  => {
+const lookup = (book, search, longDesc): RichEmbedJSON  => {
     // TODO: handle exact matches, and multi-word names, i.e. - "Giant Crocodile"
     // TODO: handle full entries, not just lvl 0 of the JSON object
     // TODO: handle number values and format differently than string values
@@ -232,7 +238,7 @@ let lookup = (book, search, longDesc, isRegex): RichEmbedJSON  => {
     if(exactMatch != null) {
         text += jsonToString(exactMatch, 0);
     } else if(result.length > 1) {
-        output.title = "Found multiple results for " + search;
+        output.title = "Found " + result.length + " results for " + search;
         output.desc = result.reduce(listStrings);
         return output;
     } else if(result.length == 1) {
@@ -249,6 +255,57 @@ let lookup = (book, search, longDesc, isRegex): RichEmbedJSON  => {
 
     return output;
 }
+
+// splits text based on 2048 char increments
+const paginate = (title: string, input: string): RichEmbed[] => {
+    let pages: RichEmbed[] = [];
+    let charLimit = 2048;
+    let currPage = 0;
+    let lines = input.split("\n");
+    let numOfPages = Math.ceil(lines.length / 30);
+    for(let n = 0; n < numOfPages; n++) {
+        pages.push(new RichEmbed().setTitle(title));
+    }
+    for(let i = 0; i < lines.length; i++) {
+        if(i > 29 ? i % 29 != 0 : i % 29 == i && pages[currPage].length + lines[i].length < charLimit) {
+            pages[currPage].description += lines[i] + "\n";
+        } else {
+            pages[++currPage].description += lines[i] + "\n";
+        }
+    }
+    return pages;
+}
+
+// https://www.npmjs.com/package/discord.js-pagination
+const paginationEmbed = async (msg, pages, emojiList = ['⏪', '⏩'], timeout = 120000) => {
+	if (!msg && !msg.channel) throw new Error('Channel is inaccessible.');
+	if (!pages) throw new Error('Pages are not given.');
+	if (emojiList.length !== 2) throw new Error('Need two emojis.');
+	let page = 0;
+	const curPage = await msg.channel.send(pages[page].setFooter(`Page ${page + 1} / ${pages.length}`));
+	for (const emoji of emojiList) await curPage.react(emoji);
+	const reactionCollector = curPage.createReactionCollector(
+		(reaction, user) => emojiList.includes(reaction.emoji.name) && !user.bot,
+		{ time: timeout }
+	);
+	reactionCollector.on('collect', reaction => {
+        // reaction.users.remove(msg.author);
+		switch (reaction.emoji.name) {
+			case emojiList[0]:
+				page = page > 0 ? --page : pages.length - 1;
+				break;
+			case emojiList[1]:
+				page = page + 1 < pages.length ? ++page : 0;
+				break;
+			default:
+				break;
+		}
+		curPage.edit(pages[page].setFooter(`Page ${page + 1} / ${pages.length}`));
+	});
+	reactionCollector.on('end', () => curPage.reactions.deleteAll());
+	return curPage;
+};
+module.exports = paginationEmbed;
 
 bot.login(config.token);
 
