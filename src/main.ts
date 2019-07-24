@@ -7,6 +7,21 @@ let spells = require('./data/spells.json');
 // Initialize Discord Bot
 let bot = new Client();
 
+
+/**
+ * TODO: command so that users can add custom macros with existing commands
+ * TODO: command that allows users to add their spells, cantrips, attacks
+ * TODO: character creation command
+ * TODO: switch between characters command
+ * TODO: change prefix command
+ * TODO: set command to handle changing attributes
+ * TODO: add command to handle equipment, gold, etc
+ * TODO: initiative tracking
+ * TODO: homebrew support
+ * TODO: game state
+ * TODO: add helper function to send messages in secret or publicly
+ * */  
+
 bot.on('ready', function (event) {
     console.log('Bot is running');
 });
@@ -16,27 +31,20 @@ bot.on('message', async message => {
 
     if(message.content.indexOf(config.prefix) !== 0) return;
 
-    const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
-    const command = args.shift().toLowerCase();
+    const input = message.content.slice(config.prefix.length).trim().split(/ +/g);
+    const command = input.shift().toLowerCase();
+    const options = input.filter(e => e.startsWith("-"));
+    const args = input.filter(e => !e.startsWith("-"));
     
     switch(command) {
         case 'help': {
-            // incorrect use of help command response
+            // TODO: handle secret option
+            if(args.length != 1) {
+                message.author.send("No command provided.\nUsage: " + help["help"].usage);
+            }
             const subcmd = args.shift().toLowerCase();
-            if(!help[subcmd]) {
-                message.author.send("Unknown command: " + subcmd);
-                return;
-            }
-            let opts = help[subcmd].options;
-            let text = "Usage: " + help[subcmd].usage + "\n" + 
-                                   help[subcmd].description + "\n" +
-                                   "Example: `" + help[subcmd].example + "`\n" + 
-                                   (opts.length > 0 ? "Options:\n" : "");
-            
-            for(let i = 0; i < opts.length; i++) {
-                text += "  " + opts[i].short + ",  " + opts[i].name + " ".repeat(30 - opts[i].name.length) + opts[i].description + "\n"
-            }
-            message.author.send(text)
+            let text = helpString(subcmd);
+            message.author.send(stringToRichEmbed("!" + subcmd, text));
         }
         break;
         case 'roll':
@@ -61,14 +69,14 @@ bot.on('message', async message => {
             let rollArray = roll(rolls, sides);
 
             // Check for dis- and advantage flags, modify rollArray as appropriate
-            if(args.includes('-a') || args.includes('adv')) {
+            if(options.includes('-a')) {
                 let advRoll = roll(rolls, sides);
                 for(let i = 0; i < advRoll.length; i++) {
                     if(advRoll[i] > rollArray[i]) {
                         rollArray[i] = advRoll[i];
                     }
                 }
-            } else if(args.includes('-d') || args.includes('dis')) {
+            } else if(options.includes('-d')) {
                 let disRoll = roll(rolls, sides);
                 for(let i = 0; i < disRoll.length; i++) {
                     if(disRoll[i] < rollArray[i]) {
@@ -83,15 +91,15 @@ bot.on('message', async message => {
             let text = rollToStringArray.reduce(add) + "Total: " + (total == 1 ? total + "\n*Be gentle...*" : total);
 
             // Check for secret flag to determine where to return response.
-            if(args.includes("secret") || args.includes("-s")) {
-                message.author.send(text);
+            if(options.includes("-s")) {
+                message.author.send(stringToRichEmbed(message.author.username + " rolled " + xdy, text));
             } else {
-                message.channel.send(text);
+                message.channel.send(stringToRichEmbed(message.author.username + " rolled " + xdy, text));
             }
         break;
         case 'lookup': {
             let book = args.shift().toLowerCase();
-            let longDesc = args.includes("-l");
+            let longDesc = options.includes("-l");
             let search = "";
 
             while(args[0] && !args[0].match('-.*')) {
@@ -106,33 +114,20 @@ bot.on('message', async message => {
             
             let result: RichEmbedJSON = lookup(book, search, longDesc);
             if(result.desc.length > 2048) {
-                // Have to react twice to switch pages
-                // undefined at the top
+                // TODO: Have to react twice to switch pages
+                // TODO: undefined at the top
                 let pages: RichEmbed[] = paginate(result.title, result.desc);
                 paginationEmbed(message, pages);
             } else {
-                let embed: RichEmbed = parseRichEmbed(result.title, result.desc);
+                let embed: RichEmbed = stringToRichEmbed(result.title, result.desc);
                 message.channel.send(embed);
             }
 
-            if(args.includes("-s")) {
+            if(options.includes("-s")) {
                 // Call send message with secret flag true
             }
         }
         break;
-        /**
-         * TODO: command so that users can add custom macros with existing commands
-         * TODO: command that allows users to add their spells, cantrips, attacks
-         * TODO: character creation command
-         * TODO: switch between characters command
-         * TODO: change prefix command
-         * TODO: set command to handle changing attributes
-         * TODO: add command to handle equipment, gold, etc
-         * TODO: lookup command (5e SRD)
-         * TODO: initiative tracking
-         * TODO: homebrew support
-         * TODO: game state
-         * */  
     }
 });
 
@@ -164,18 +159,28 @@ const add = (total, current) => {
     return total + current;
 }
 
+/**
+ * listStrings() helper function, reducer
+ * @param total 
+ * @param current : JSON Object with assumed "name" property
+ */
 const listStrings = (total, current) => {
     return total + ", \n" + current["name"];
 }
 
+/**
+ * jsonToString() converts JSON object to formatted string
+ * @param obj : JSON object
+ * @param lvl : JSON object level within parent objects, i.e. - 0 means root
+ */
 const jsonToString = (obj, lvl) => {
     let output = "";
     for(let field in obj) {
         if(obj[field].length > 0) {
             if(obj[field] instanceof Array) {
-                // for(let i = 0; i < obj[field].length; i++) {
-                //     output += jsonToString(obj[field][i], ++lvl);
-                // }
+                for(let i = 0; i < obj[field].length; i++) {
+                    output += jsonToString(obj[field][i], ++lvl);
+                }
             } else {
                 output += " ".repeat(2 * lvl) + "**" + field[0].toUpperCase() + field.substring(1) + "**:\n" + obj[field] + "\n"
             }
@@ -184,7 +189,13 @@ const jsonToString = (obj, lvl) => {
     return output;
 }
 
-const parseRichEmbed = (title, desc, color = 'WHITE'): RichEmbed => {
+/**
+ * stringToRichEmbed() converts string to Discord.RichEmbed
+ * @param title : title
+ * @param desc : description
+ * @param color : (optional) color, (default) white
+ */
+const stringToRichEmbed = (title, desc, color = 'WHITE'): RichEmbed => {
     let embed = new RichEmbed()
                       .setTitle(title)
                       .setDescription(desc)
@@ -192,6 +203,10 @@ const parseRichEmbed = (title, desc, color = 'WHITE'): RichEmbed => {
     return embed;
 }
 
+/**
+ * Defines RichEmbedJSON Object
+ * => Used for passing preformatted JSON objects to message...send() calls
+ */
 interface RichEmbedJSON {
     title: string,
     desc: string,
@@ -255,8 +270,12 @@ const lookup = (book, search, longDesc): RichEmbedJSON  => {
 
     return output;
 }
-
-// splits text based on 2048 char increments
+/**
+ * paginate() : splits text into RichEmbed array, 
+ * based on 2048 char increments and 30 lines of text per RichEmbed.
+ * @param title 
+ * @param input 
+ */
 const paginate = (title: string, input: string): RichEmbed[] => {
     let pages: RichEmbed[] = [];
     let charLimit = 2048;
@@ -276,7 +295,14 @@ const paginate = (title: string, input: string): RichEmbed[] => {
     return pages;
 }
 
-// https://www.npmjs.com/package/discord.js-pagination
+/**
+ * Nifty function written by @saanuregh 
+ * Link: https://www.npmjs.com/package/discord.js-pagination
+ * @param msg : Client message object
+ * @param pages : RichEmbed[] or MessageEmbed[]
+ * @param emojiList : array of emojis
+ * @param timeout : number, time limit to handle pagination
+ */
 const paginationEmbed = async (msg, pages, emojiList = ['⏪', '⏩'], timeout = 120000) => {
 	if (!msg && !msg.channel) throw new Error('Channel is inaccessible.');
 	if (!pages) throw new Error('Pages are not given.');
@@ -289,7 +315,8 @@ const paginationEmbed = async (msg, pages, emojiList = ['⏪', '⏩'], timeout =
 		{ time: timeout }
 	);
 	reactionCollector.on('collect', reaction => {
-        // reaction.users.remove(msg.author);
+        // TODO: allow user to click emoji once to change pages
+        // reaction.users.remove(msg.author); <-- deprecated, used in original implementation
 		switch (reaction.emoji.name) {
 			case emojiList[0]:
 				page = page > 0 ? --page : pages.length - 1;
@@ -305,8 +332,27 @@ const paginationEmbed = async (msg, pages, emojiList = ['⏪', '⏩'], timeout =
 	reactionCollector.on('end', () => curPage.reactions.deleteAll());
 	return curPage;
 };
-module.exports = paginationEmbed;
+
+/**
+ * helpString() returns formatted string of help manual page for given command.
+ * @param cmd : command to lookup
+ */
+const helpString = (cmd: string): string => {
+    if(!help[cmd]) {
+        return "Unknown command: " + cmd;
+    }
+    let opts = help[cmd].options;
+    let text = "Usage: " + help[cmd].usage + "\n" + 
+                           help[cmd].description + "\n" +
+                           "Example: `" + help[cmd].example + "`\n" + 
+                           (opts.length > 0 ? "Options:\n" : "");
+    
+    for(let i = 0; i < opts.length; i++) {
+        text += "  " + opts[i].short + ",  " + opts[i].name + " ".repeat(30 - opts[i].name.length) + opts[i].description + "\n";
+    }
+    return text;
+}
 
 bot.login(config.token);
 
-module.exports = { roll }
+module.exports = { roll, paginationEmbed }
