@@ -1,6 +1,6 @@
 {
     "roll": {
-        "usage": "!roll [Number of rolls]d[Sides of dice] [OPTION]",
+        "usage": "!roll <number_of_rolls>d<number_of_sides> [OPTIONS]",
         "description": "Provided a number of times to roll and an x-sided dice, returns consecutive rolls and total.",
         "example": "!roll 2d4",
         "options": [
@@ -26,5 +26,34 @@
         "description": "Detailed help message for given command",
         "example": "!help roll",
         "options": []
+    },
+    "lookup": {
+        "usage": "!lookup <book> <search_term(s)> [OPTIONS]",
+        "description": "Used to lookup terms in either the 'spells' or 'monsters' manual. If multiple matches are found, will return list of matches.",
+        "example": "!lookup monsters Giant Crocodile",
+        "options": [
+            {
+                "short": "-l",
+                "name": "long description",
+                "description": "flag to return full description of search term result"
+            },
+            {
+                "short": "-s",
+                "name": "secret",
+                "description": "flag to PM results to author"
+            }
+        ]
+    },
+    "commands": {
+        "usage": "!commands",
+        "description": "Returns list of available commands",
+        "example": "!commands",
+        "options": [
+            {
+                "short": "-s",
+                "name": "secret",
+                "description": "flag to PM results to author"
+            }
+        ]
     }
 }

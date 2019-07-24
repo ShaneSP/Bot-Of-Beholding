@@ -30,7 +30,7 @@ bot.on('message', async message => {
     if(message.author.bot) return;
 
     if(message.content.indexOf(config.prefix) !== 0) return;
-
+    const original = message.content;
     const input = message.content.slice(config.prefix.length).trim().split(/ +/g);
     const command = input.shift().toLowerCase();
     const options = input.filter(e => e.startsWith("-"));
@@ -41,6 +41,7 @@ bot.on('message', async message => {
             // TODO: handle secret option
             if(args.length != 1) {
                 message.author.send("No command provided.\nUsage: " + help["help"].usage);
+                return;
             }
             const subcmd = args.shift().toLowerCase();
             let text = helpString(subcmd);
@@ -51,7 +52,7 @@ bot.on('message', async message => {
             // TODO?: consider adapting to accept dice modifiers?
 
             if(!args[0].match(/[0-9]*d(4|6|8|10|12|20)/) || args.length < 1) {
-                message.channel.send("Usage: "+ help.roll.usage + "\nEntered: " + args[0]);
+                message.channel.send("Usage: "+ help.roll.usage + "\nEntered: " + original);
                 return;
             }
             
@@ -98,6 +99,10 @@ bot.on('message', async message => {
             }
         break;
         case 'lookup': {
+            if(args.length < 2) {
+                message.channel.send("Usage: "+ help.lookup.usage + "\nEntered: " + original);
+                return;
+            }
             let book = args.shift().toLowerCase();
             let longDesc = options.includes("-l");
             let search = "";
@@ -220,10 +225,9 @@ interface RichEmbedJSON {
  * @param longDesc? : (optional) return long  description
  */
 const lookup = (book, search, longDesc): RichEmbedJSON  => {
-    // TODO: handle exact matches, and multi-word names, i.e. - "Giant Crocodile"
     // TODO: handle full entries, not just lvl 0 of the JSON object
     // TODO: handle number values and format differently than string values
-    // TODO: write/rewrite functions to accommodate formatting
+    // TODO: child json objects aren't indented correctly
     
     let ref = null;
     if(book == "spells") {
