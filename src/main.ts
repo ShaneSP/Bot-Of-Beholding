@@ -133,6 +133,14 @@ bot.on('message', async message => {
             }
         }
         break;
+        case "commands": {
+            let text = "";
+            for(let cmd in help) {
+                text += "**" + cmd + "**" + ": " + help[cmd].description + "\n";
+            }
+            message.channel.send(stringToRichEmbed("Available Commands:", text));
+        }
+        break;
     }
 });
 
