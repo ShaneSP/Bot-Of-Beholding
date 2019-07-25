@@ -16,7 +16,6 @@ let bot = new Client();
  * TODO: initiative tracking
  * TODO: homebrew support
  * TODO: game state
- * TODO: add helper function to send messages in secret or publicly
  */  
 
 bot.on('ready', function (event) {
@@ -35,7 +34,6 @@ bot.on('message', async message => {
     
     switch(command) {
         case 'help': {
-            // TODO: handle secret option
             if(args.length != 1) {
                 handleSend(message, "No command provided.\nUsage: " + help["help"].usage, null, options.includes("-s"));
                 return;
@@ -323,7 +321,6 @@ const paginate = (title: string, input: string): RichEmbed[] => {
  * @param timeout : number, time limit to handle pagination
  */
 const paginationEmbed = async (msg, pages, secret = false, emojiList = ['⏪', '⏩'], timeout = 120000) => {
-    // TODO: Have to react twice to switch pages
     // TODO: undefined at the top
 	if (!msg && !msg.channel) throw new Error('Channel is inaccessible.');
 	if (!pages) throw new Error('Pages are not given.');
@@ -336,20 +333,21 @@ const paginationEmbed = async (msg, pages, secret = false, emojiList = ['⏪', '
 		{ time: timeout }
 	);
 	reactionCollector.on('collect', reaction => {
-        // TODO: allow user to click emoji once to change pages
-        // reaction.users.remove(msg.author); <-- deprecated, used in original implementation
+        // TODO: test if other users can switch pages
+        reaction.remove(msg.author);
 		switch (reaction.emoji.name) {
 			case emojiList[0]:
-				page = page > 0 ? --page : pages.length - 1;
+				page = page > 0 ? --page : page;
 				break;
 			case emojiList[1]:
-				page = page + 1 < pages.length ? ++page : 0;
+				page = page + 1 < pages.length ? ++page : page;
 				break;
 			default:
 				break;
-		}
+        }
 		curPage.edit(pages[page].setFooter(`Page ${page + 1} / ${pages.length}`));
-	});
+    });
+    
 	reactionCollector.on('end', () => curPage.reactions.deleteAll());
 	return curPage;
 };
