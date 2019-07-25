@@ -3,10 +3,7 @@ let config = require('./config.json');
 let help = require('./data/help.json');
 let monsters = require('./data/monsters.json');
 let spells = require('./data/spells.json');
-// Configure logger settings
-// Initialize Discord Bot
 let bot = new Client();
-
 
 /**
  * TODO: command so that users can add custom macros with existing commands
@@ -20,7 +17,7 @@ let bot = new Client();
  * TODO: homebrew support
  * TODO: game state
  * TODO: add helper function to send messages in secret or publicly
- * */  
+ */  
 
 bot.on('ready', function (event) {
     console.log('Bot is running');
@@ -40,19 +37,19 @@ bot.on('message', async message => {
         case 'help': {
             // TODO: handle secret option
             if(args.length != 1) {
-                message.author.send("No command provided.\nUsage: " + help["help"].usage);
+                handleSend(message, "No command provided.\nUsage: " + help["help"].usage, null, options.includes("-s"));
                 return;
             }
             const subcmd = args.shift().toLowerCase();
             let text = helpString(subcmd);
-            message.author.send(stringToRichEmbed("!" + subcmd, text));
+            handleSend(message, "", stringToRichEmbedJSON("!" + subcmd, text), options.includes("-s"));
         }
         break;
         case 'roll':
             // TODO?: consider adapting to accept dice modifiers?
 
-            if(!args[0].match(/[0-9]*d(4|6|8|10|12|20)/) || args.length < 1) {
-                message.channel.send("Usage: "+ help.roll.usage + "\nEntered: " + original);
+            if(args.length < 1 || !args[0].match(/[0-9]*d(4|6|8|10|12|20)/)) {
+                handleSend(message, "Usage: "+ help.roll.usage + "\nEntered: " + original, null, options.includes("-s"));
                 return;
             }
             
@@ -62,7 +59,7 @@ bot.on('message', async message => {
             let sides = xdy.substring(xdy.indexOf('d') + 1);
 
             if(rolls > config.maxRolls) {
-                message.channel.send("Exceeds max dice rolls, " + config.maxRolls + ", are you trying to make BoB roll a constitution check?");
+                handleSend(message, "Exceeds max dice rolls, " + config.maxRolls + ", are you trying to make BoB roll a constitution check?", null, options.includes("-s"));
                 return;
             }
 
@@ -91,16 +88,11 @@ bot.on('message', async message => {
             let total = rollArray.reduce(add);
             let text = rollToStringArray.reduce(add) + "Total: " + (total == 1 ? total + "\n*Be gentle...*" : total);
 
-            // Check for secret flag to determine where to return response.
-            if(options.includes("-s")) {
-                message.author.send(stringToRichEmbed(message.author.username + " rolled " + xdy, text));
-            } else {
-                message.channel.send(stringToRichEmbed(message.author.username + " rolled " + xdy, text));
-            }
+            handleSend(message, "", stringToRichEmbedJSON(message.author.username + " rolled " + xdy, text),  options.includes("-s"));
         break;
         case 'lookup': {
             if(args.length < 2) {
-                message.channel.send("Usage: "+ help.lookup.usage + "\nEntered: " + original);
+                handleSend(message, "Usage: "+ help.lookup.usage + "\nEntered: " + original, null, options.includes("-s"));
                 return;
             }
             let book = args.shift().toLowerCase();
@@ -113,24 +105,12 @@ bot.on('message', async message => {
             search = search.substring(0, search.length - 1);
             
             if(!book.match(/spells|monsters/)) {
-                message.channel.send("Unknown text: " + book + ". Perhaps Xanathar deserves a visit.");
+                handleSend(message, "Unknown text: " + book + ". Perhaps Xanathar deserves a visit.", null, options.includes("-s"));
                 return;
             }
             
             let result: RichEmbedJSON = lookup(book, search, longDesc);
-            if(result.desc.length > 2048) {
-                // TODO: Have to react twice to switch pages
-                // TODO: undefined at the top
-                let pages: RichEmbed[] = paginate(result.title, result.desc);
-                paginationEmbed(message, pages);
-            } else {
-                let embed: RichEmbed = stringToRichEmbed(result.title, result.desc);
-                message.channel.send(embed);
-            }
-
-            if(options.includes("-s")) {
-                // Call send message with secret flag true
-            }
+            handleSend(message, null, result, options.includes("-s"));
         }
         break;
         case "commands": {
@@ -138,11 +118,29 @@ bot.on('message', async message => {
             for(let cmd in help) {
                 text += "**" + cmd + "**" + ": " + help[cmd].description + "\n";
             }
-            message.channel.send(stringToRichEmbed("Available Commands:", text));
+            handleSend(message, "", stringToRichEmbedJSON("Available Commands:", text), true);
         }
         break;
     }
 });
+
+/**
+ * handleSend() helper function, does the work of sending either a RichEmbedJSON or RichEmbed in response to a Discord.Message
+ * @param msg : Client message object
+ * @param text : RichEmbed
+ * @param json : RichEmbedJSON
+ * @param secret : boolean to determine where to send message response
+ */
+const handleSend = (msg, text: string, json: RichEmbedJSON, secret: boolean) => {
+    if(json != null && json.desc.length > 2048) {
+        let pages: RichEmbed[] = paginate(json.title, json.desc);
+        paginationEmbed(msg, pages, secret);
+    } else if (json != null) {
+        !secret ? msg.channel.send(jsonToRichEmbed(json)) : msg.author.send(jsonToRichEmbed(json));
+    } else {
+        !secret ? msg.channel.send(text) : msg.author.send(text);
+    }
+}
 
 /**
  * roll() helper function
@@ -208,12 +206,21 @@ const jsonToString = (obj, lvl) => {
  * @param desc : description
  * @param color : (optional) color, (default) white
  */
-const stringToRichEmbed = (title, desc, color = 'WHITE'): RichEmbed => {
-    let embed = new RichEmbed()
-                      .setTitle(title)
-                      .setDescription(desc)
-                      .setColor(color);
+const stringToRichEmbedJSON = (title, desc, color = 'WHITE'): RichEmbedJSON => {
+    let embed = {
+        title: title,
+        desc: desc,
+        color: color
+    };
     return embed;
+}
+
+/**
+ * jsonToRichEmbed() converts JSON Object to Discord.RichEmbed
+ * @param json : JSON Object
+ */
+const jsonToRichEmbed = (json): RichEmbed => {
+    return new RichEmbed().setTitle(json.title).setDescription(json.desc).setColor(json.color);
 }
 
 /**
@@ -315,12 +322,14 @@ const paginate = (title: string, input: string): RichEmbed[] => {
  * @param emojiList : array of emojis
  * @param timeout : number, time limit to handle pagination
  */
-const paginationEmbed = async (msg, pages, emojiList = ['⏪', '⏩'], timeout = 120000) => {
+const paginationEmbed = async (msg, pages, secret = false, emojiList = ['⏪', '⏩'], timeout = 120000) => {
+    // TODO: Have to react twice to switch pages
+    // TODO: undefined at the top
 	if (!msg && !msg.channel) throw new Error('Channel is inaccessible.');
 	if (!pages) throw new Error('Pages are not given.');
 	if (emojiList.length !== 2) throw new Error('Need two emojis.');
 	let page = 0;
-	const curPage = await msg.channel.send(pages[page].setFooter(`Page ${page + 1} / ${pages.length}`));
+	const curPage = !secret? await msg.channel.send(pages[page].setFooter(`Page ${page + 1} / ${pages.length}`)) : await msg.author.send(pages[page].setFooter(`Page ${page + 1} / ${pages.length}`));
 	for (const emoji of emojiList) await curPage.react(emoji);
 	const reactionCollector = curPage.createReactionCollector(
 		(reaction, user) => emojiList.includes(reaction.emoji.name) && !user.bot,
