@@ -6,7 +6,8 @@
     "author": "Shane Steele-Pardue",
     "scripts": {
         "start": "npm run test && node ./src/main.js",
-        "test": "mocha --require ts-node/register tests.ts"
+        "test": "mocha --require ts-node/register tests.ts",
+        "hist": "git log --oneline --graph --all"
     },
     "dependencies": {
         "discord.js": "^11.5.1",
