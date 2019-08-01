@@ -1,9 +1,12 @@
-import { Client, RichEmbed, ClientOptions } from 'discord.js';
+import { Client, RichEmbed, ClientOptions, RequestHandler } from 'discord.js';
+import { Monster } from './classes/monster';
+const request = require('request-promise');
 let config = require('./config.json');
 let help = require('./data/help.json');
 let monsters = require('./data/monsters.json');
 let spells = require('./data/spells.json');
 let bot = new Client();
+const baseURL = "http://localhost:8080/api/";
 
 /**
  * TODO: command so that users can add custom macros with existing commands
@@ -16,6 +19,8 @@ let bot = new Client();
  * TODO: initiative tracking
  * TODO: homebrew support
  * TODO: game state
+ * TODO: pagination in DM's requires multiple clicks to switch pages
+ * TODO: Lookup workflow should no longer reference the .json files (use mongodb)
  */  
 
 bot.on('ready', function (event) {
@@ -89,6 +94,7 @@ bot.on('message', async message => {
             handleSend(message, "", stringToRichEmbedJSON(message.author.username + " rolled " + xdy, text),  options.includes("-s"));
         break;
         case 'lookup': {
+            // TODO: Lookup workflow should no longer reference the .json files (use mongodb)
             if(args.length < 2) {
                 handleSend(message, "Usage: "+ help.lookup.usage + "\nEntered: " + original, null, options.includes("-s"));
                 return;
@@ -119,8 +125,64 @@ bot.on('message', async message => {
             handleSend(message, "", stringToRichEmbedJSON("Available Commands:", text), true);
         }
         break;
+        case "create": {
+            // TODO: handle player creation
+            // TODO: handle monster creation
+            // TODO: handle spell creation
+            
+            // handleSend(message, "", test.toRichEmbedJSON(), options.includes("-s"));
+            // return;
+            return;
+            for(let entry in monsters) {
+                let test: Monster = Monster.fromJSON(monsters[entry]);
+
+                let input: Request = {
+                    method: "POST",
+                    uri: baseURL +  "monsters",
+                    body: test.getJSON(),
+                    json: true
+                }
+    
+                request(input)
+                    .then((res) => {
+                        // TODO: handle API response
+                        console.log(res);
+                    })
+                    .catch((err) => {
+                        // TODO: handle API errors
+                        console.log(err);
+                    })
+            }
+            return;
+            
+        } 
     }
 });
+
+interface Request {
+    method: string,
+    uri: string,
+    body: JSON,
+    json: boolean
+}
+
+/**
+ * DEPRECATED >> options() helper function, generates JSON request to be passed to request-promise
+ * TS ERROR : Cannot invoke an expression whose type lacks a call signature.
+ * @param method : GET, PUT, DELETE, POST
+ * @param uri : end-point for API
+ * @param body : JSON payload to be handled by end-point
+ * 
+ * Usage: request(options("GET", "monsters", { id: 1234 }));
+ */
+const options = (method: string, uri: string, body): Request => {
+    return {
+        method: method,
+        uri: baseURL + uri, // http:/localhost:8080/ + <end-point>
+        body: body,
+        json: true
+    }
+}
 
 /**
  * handleSend() helper function, does the work of sending either a RichEmbedJSON or RichEmbed in response to a Discord.Message
@@ -185,7 +247,7 @@ const listStrings = (total, current) => {
 const jsonToString = (obj, lvl) => {
     let output = "";
     for(let field in obj) {
-        if(obj[field].length > 0) {
+        if(obj[field]) {
             if(obj[field] instanceof Array) {
                 for(let i = 0; i < obj[field].length; i++) {
                     output += jsonToString(obj[field][i], ++lvl);
@@ -269,12 +331,13 @@ const lookup = (book, search, longDesc): RichEmbedJSON  => {
     let text = "";
     if(exactMatch != null) {
         text += jsonToString(exactMatch, 0);
+        return Monster.fromJSON(exactMatch).toRichEmbedJSON();
     } else if(result.length > 1) {
         output.title = "Found " + result.length + " results for " + search;
         output.desc = result.reduce(listStrings);
         return output;
     } else if(result.length == 1) {
-        text += jsonToString(result[0], 0);
+        return Monster.fromJSON(result[0]).toRichEmbedJSON();
     } else {
         output.title = "No results for **" + search + "**.";
         return output;
@@ -375,3 +438,7 @@ const helpString = (cmd: string): string => {
 bot.login(config.token);
 
 module.exports = { roll, paginationEmbed }
+
+function newFunction(): any {
+    return "GET";
+}
