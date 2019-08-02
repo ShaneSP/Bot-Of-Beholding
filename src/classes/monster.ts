@@ -178,15 +178,15 @@ export class Monster {
             json.acrobatics, json.animal_handling, json.arcana, json.athletics, json.deception,
             json.insight, json.intimidation, json.investigation, json.medicine, json.nature,
             json.performance, json.persuasion, json.religion, json.sleight_of_hand, json.stealth, json.survival);
-        mon.damage_vulnerabilities = json.damage_vulnerabilities? json.damage_vulnerabilities.split(",") : [];
-        mon.damage_resistances = json.damage_resistances? json.damage_resistances.split(",") : [];
-        mon.damage_immunities = json.damage_immunities? json.damage_immunities.split(",") : [];
-        mon.senses = json.senses? json.senses.split(",") : [];
-        mon.languages = json.languages? json.languages.split(",") : [];
-        mon.special_abilities = json.special_abilities? json.special_abilities.map(e => Action.fromJSON(e)) : [];
-        mon.actions   = json.actions? json.actions.map(e => Action.fromJSON(e)) : [];
+        mon.damage_vulnerabilities = json.damage_vulnerabilities.length > 0? json.damage_vulnerabilities.split(",") : [];
+        mon.damage_resistances = json.damage_resistances.length > 0? json.damage_resistances.split(",") : [];
+        mon.damage_immunities = json.damage_immunities.length > 0? json.damage_immunities.split(",") : [];
+        mon.senses = json.senses.length > 0? json.senses.split(",") : [];
+        mon.languages = json.languages.length > 0? json.languages.split(",") : [];
+        mon.special_abilities = json.special_abilities.length > 0? json.special_abilities.map(e => Action.fromJSON(e)) : [];
+        mon.actions   = json.actions.length > 0? json.actions.map(e => Action.fromJSON(e)) : [];
         mon.subtype   = json.subtype;
-        mon.legendary_actions = json.legendary_actions? json.legendary_actions.map(e => Action.fromJSON(e)) : [];
+        mon.legendary_actions = json.legendary_actions.length > 0? json.legendary_actions.map(e => Action.fromJSON(e)) : [];
         return mon;
     }
 
@@ -204,8 +204,8 @@ export class Monster {
             `--------------------------------------\n` +
             `**Saving Throws** Con +${this.constitution_save}, Int +${this.intelligence_save}, Wis +${this.wisdom_save}\n` +
             `**Skills** History +${this.history}, Perception +${this.perception}\n` +
-            `**Senses** ` + this.senses.reduce((t, s) => t + ", " + s) + `\n` +
-            `**Languages** ` + this.languages.reduce((t, s) => t + ", " + s) + `\n` +
+            `**Senses** ` + (this.senses.length > 0 ? this.senses.reduce((t, s) => t + ", " + s) : "") + `\n` +
+            `**Languages** ` + (this.languages.length > 0 ? this.languages.reduce((t, s) => t + ", " + s) : "") + `\n` +
             `**Challenge** ` + this.challenge_rating + `\n` +
             `--------------------------------------\n` +
             this.special_abilities.map(a => "***" + a.name + ".*** " + a.description + "\n\n").reduce((t, a) => t + a) +

@@ -55,10 +55,10 @@ app.get("/api/" + monsters, function (req, res) {
 });
 
 // Get monster matching an id
-app.get("/api/" + monsters + "/:id", function (req, res) {
-  db.collection(monsters).findOne({ _id: new ObjectID(req.params.id) }, function (err, doc) {
+app.get("/api/" + monsters + "/:name", function (req, res) {
+  db.collection(monsters).findOne({ name: req.params.name }, function (err, doc) {
     if (err) {
-      handleError(res, err.message, "Failed to find monster with id " + req.params.id, 500);
+      handleError(res, err.message, "Failed to find monster with name " + req.params.name, 500);
     } else {
       res.status(200).json(doc);
     }

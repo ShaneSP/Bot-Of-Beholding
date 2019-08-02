@@ -113,7 +113,8 @@ bot.on('message', async message => {
                 return;
             }
             
-            let result: RichEmbedJSON = lookup(book, search, longDesc);
+            let result: RichEmbedJSON = lookup(book, search, longDesc);return;
+            console.log(result);
             handleSend(message, null, result, options.includes("-s"));
         }
         break;
@@ -311,6 +312,23 @@ const lookup = (book, search, longDesc): RichEmbedJSON  => {
         ref = monsters;
     }
 
+    let input = {
+        method: "GET",
+        uri: baseURL +  book + "/" + search
+    }
+
+    request(input)
+        .then((res) => {
+            // TODO: handle API response
+            console.log(Monster.fromJSON(JSON.parse(res)))
+        })
+        .catch((err) => {
+            // TODO: handle API errors
+            console.log(err);
+        })
+
+    return;
+    // ------------------------------
     let lowercase = search.toLowerCase();
     let exactMatch = null;
     let result = [];
@@ -363,7 +381,7 @@ const paginate = (title: string, input: string): RichEmbed[] => {
     let lines = input.split("\n");
     let numOfPages = Math.ceil(lines.length / 30);
     for(let n = 0; n < numOfPages; n++) {
-        pages.push(new RichEmbed().setTitle(title));
+        pages.push(new RichEmbed().setTitle(title).setDescription(""));
     }
     for(let i = 0; i < lines.length; i++) {
         if(i > 29 ? i % 29 != 0 : i % 29 == i && pages[currPage].length + lines[i].length < charLimit) {
@@ -384,7 +402,6 @@ const paginate = (title: string, input: string): RichEmbed[] => {
  * @param timeout : number, time limit to handle pagination
  */
 const paginationEmbed = async (msg, pages, secret = false, emojiList = ['⏪', '⏩'], timeout = 120000) => {
-    // TODO: undefined at the top
 	if (!msg && !msg.channel) throw new Error('Channel is inaccessible.');
 	if (!pages) throw new Error('Pages are not given.');
 	if (emojiList.length !== 2) throw new Error('Need two emojis.');
@@ -438,7 +455,3 @@ const helpString = (cmd: string): string => {
 bot.login(config.token);
 
 module.exports = { roll, paginationEmbed }
-
-function newFunction(): any {
-    return "GET";
-}
