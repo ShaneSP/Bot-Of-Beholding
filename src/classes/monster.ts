@@ -178,10 +178,29 @@ export class Monster {
             json.acrobatics, json.animal_handling, json.arcana, json.athletics, json.deception,
             json.insight, json.intimidation, json.investigation, json.medicine, json.nature,
             json.performance, json.persuasion, json.religion, json.sleight_of_hand, json.stealth, json.survival);
+        mon.damage_vulnerabilities = json.damage_vulnerabilities;
+        mon.damage_resistances = json.damage_resistances;
+        mon.damage_immunities = json.damage_immunities;
+        mon.senses = json.senses; // senses is a string array
+        mon.languages = json.languages;
+        mon.special_abilities = json.special_abilities.length;
+        mon.actions   = json.actions;
+        mon.subtype   = json.subtype;
+        mon.legendary_actions = json.legendary_actions.length
+        return mon;
+    }
+
+    public static loadFromJSON(json: any) {
+        let mon = new Monster(json.name, json.size, json.type, json.alignment, json.armor_class, json.hit_points, 
+            json.hit_dice, json.speed, json.strength, json.dexterity, json.constitution, json.intelligence, json.wisdom, 
+            json.charisma, json.constitution_save, json.intelligence_save, json.wisdom_save, json.challenge_rating, json.history, json.perception,
+            json.acrobatics, json.animal_handling, json.arcana, json.athletics, json.deception,
+            json.insight, json.intimidation, json.investigation, json.medicine, json.nature,
+            json.performance, json.persuasion, json.religion, json.sleight_of_hand, json.stealth, json.survival);
         mon.damage_vulnerabilities = json.damage_vulnerabilities.length > 0? json.damage_vulnerabilities.split(",") : [];
         mon.damage_resistances = json.damage_resistances.length > 0? json.damage_resistances.split(",") : [];
         mon.damage_immunities = json.damage_immunities.length > 0? json.damage_immunities.split(",") : [];
-        mon.senses = json.senses.length > 0? json.senses.split(",") : [];
+        mon.senses = json.senses.length > 0? json.senses.split(",") : []; // senses is a string array
         mon.languages = json.languages.length > 0? json.languages.split(",") : [];
         mon.special_abilities = json.special_abilities.length > 0? json.special_abilities.map(e => Action.fromJSON(e)) : [];
         mon.actions   = json.actions.length > 0? json.actions.map(e => Action.fromJSON(e)) : [];

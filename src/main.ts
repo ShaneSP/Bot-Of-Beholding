@@ -113,8 +113,8 @@ bot.on('message', async message => {
                 return;
             }
             
-            let result: RichEmbedJSON = lookup(book, search, longDesc);return;
-            console.log(result);
+            let result: RichEmbedJSON = await lookup(book, search, longDesc).then(p => p.toRichEmbedJSON());
+            console.log(result);return;
             handleSend(message, null, result, options.includes("-s"));
         }
         break;
@@ -300,7 +300,7 @@ interface RichEmbedJSON {
  * @param search : search string
  * @param longDesc? : (optional) return long  description
  */
-const lookup = (book, search, longDesc): RichEmbedJSON  => {
+const lookup = async (book, search, longDesc): Promise<Monster>  => {
     // TODO: handle full entries, not just lvl 0 of the JSON object
     // TODO: handle number values and format differently than string values
     // TODO: child json objects aren't indented correctly
@@ -320,7 +320,7 @@ const lookup = (book, search, longDesc): RichEmbedJSON  => {
     request(input)
         .then((res) => {
             // TODO: handle API response
-            console.log(Monster.fromJSON(JSON.parse(res)))
+            return Monster.fromJSON(JSON.parse(res));
         })
         .catch((err) => {
             // TODO: handle API errors
@@ -329,44 +329,44 @@ const lookup = (book, search, longDesc): RichEmbedJSON  => {
 
     return;
     // ------------------------------
-    let lowercase = search.toLowerCase();
-    let exactMatch = null;
-    let result = [];
-    for(let entry in ref) {
-        if(ref[entry]["name"] && ref[entry]["name"].toLowerCase().match(lowercase)) {
-            if(ref[entry]["name"] == search) {
-                exactMatch = ref[entry];
-                break;
-            }
-            result.push(ref[entry]);
-        }
-    }
+    // let lowercase = search.toLowerCase();
+    // let exactMatch = null;
+    // let result = [];
+    // for(let entry in ref) {
+    //     if(ref[entry]["name"] && ref[entry]["name"].toLowerCase().match(lowercase)) {
+    //         if(ref[entry]["name"] == search) {
+    //             exactMatch = ref[entry];
+    //             break;
+    //         }
+    //         result.push(ref[entry]);
+    //     }
+    // }
 
-    let output: RichEmbedJSON = {
-        title: "",
-        desc: ""
-    };
-    let text = "";
-    if(exactMatch != null) {
-        text += jsonToString(exactMatch, 0);
-        return Monster.fromJSON(exactMatch).toRichEmbedJSON();
-    } else if(result.length > 1) {
-        output.title = "Found " + result.length + " results for " + search;
-        output.desc = result.reduce(listStrings);
-        return output;
-    } else if(result.length == 1) {
-        return Monster.fromJSON(result[0]).toRichEmbedJSON();
-    } else {
-        output.title = "No results for **" + search + "**.";
-        return output;
-    }
+    // let output: RichEmbedJSON = {
+    //     title: "",
+    //     desc: ""
+    // };
+    // let text = "";
+    // if(exactMatch != null) {
+    //     text += jsonToString(exactMatch, 0);
+    //     return Monster.fromJSON(exactMatch).toRichEmbedJSON();
+    // } else if(result.length > 1) {
+    //     output.title = "Found " + result.length + " results for " + search;
+    //     output.desc = result.reduce(listStrings);
+    //     return output;
+    // } else if(result.length == 1) {
+    //     return Monster.fromJSON(result[0]).toRichEmbedJSON();
+    // } else {
+    //     output.title = "No results for **" + search + "**.";
+    //     return output;
+    // }
 
-    let firstBreak = text.indexOf('\n') + 1;
-    let titleIndex = text.indexOf('\n', firstBreak + 1);
-    output.title = text.substring(firstBreak, titleIndex);
-    output.desc = text.substring(text.indexOf('\n', titleIndex), text.length);
+    // let firstBreak = text.indexOf('\n') + 1;
+    // let titleIndex = text.indexOf('\n', firstBreak + 1);
+    // output.title = text.substring(firstBreak, titleIndex);
+    // output.desc = text.substring(text.indexOf('\n', titleIndex), text.length);
 
-    return output;
+    // return output;
 }
 /**
  * paginate() : splits text into RichEmbed array, 
