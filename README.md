@@ -1,6 +1,6 @@
 # Bot Of Beholding
 
-`Bot of Beholding is a tool for DMs and PCs alike. Just don't put one bot inside another... unless you want tear open the fabric of reality and open a portal to the Astral Plane.`
+`Bot of Beholding is a Discord bot that serves as a tool for DMs and PCs alike. Just don't put one bot inside another... unless you want tear open the fabric of reality and open a portal to the Astral Plane.`
 
 ## Functionality
 `!help`: Detailed help message for given command.
@@ -38,3 +38,5 @@
 * event log (dm only)
 * setup endpoints for MongoDB
 * restructure code and helper functions in modular file structure
+* proper error throwing that trigger detailed messages returned to user
+* !lookup workflow should no longer reference the .json files
