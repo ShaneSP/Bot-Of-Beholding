@@ -20,14 +20,15 @@ const baseURL = "http://localhost:8080/api/";
  * TODO: homebrew support
  * TODO: game state
  * TODO: pagination in DM's requires multiple clicks to switch pages
- * TODO: Lookup workflow should no longer reference the .json files (use mongodb)
+ * TODO: proper error throwing that trigger detailed messages returned to user
+ * TODO: rework multiple results from !lookup
  */  
 
 bot.on('ready', function (event) {
     console.log('Bot is running');
 });
 
-bot.on('message', async message => {
+bot.on('message', message => {
     if(message.author.bot) return;
 
     if(message.content.indexOf(config.prefix) !== 0) return;
@@ -94,7 +95,6 @@ bot.on('message', async message => {
             handleSend(message, "", stringToRichEmbedJSON(message.author.username + " rolled " + xdy, text),  options.includes("-s"));
         break;
         case 'lookup': {
-            // TODO: Lookup workflow should no longer reference the .json files (use mongodb)
             if(args.length < 2) {
                 handleSend(message, "Usage: "+ help.lookup.usage + "\nEntered: " + original, null, options.includes("-s"));
                 return;
@@ -113,9 +113,14 @@ bot.on('message', async message => {
                 return;
             }
             
-            let result: RichEmbedJSON = await lookup(book, search, longDesc).then(p => p.toRichEmbedJSON());
-            console.log(result);return;
-            handleSend(message, null, result, options.includes("-s"));
+            lookup(book, search, longDesc).then(p => {
+                if(p.length == 1) {
+                    handleSend(message, null, p[0].toRichEmbedJSON(), options.includes("-s"));
+                } else {
+                    handleSend(message, null, stringToRichEmbedJSON("Results:", p.map(e => e.name + "\n").reduce(add)), options.includes("-s"))
+                }
+            });
+            
         }
         break;
         case "commands": {
@@ -133,9 +138,15 @@ bot.on('message', async message => {
             
             // handleSend(message, "", test.toRichEmbedJSON(), options.includes("-s"));
             // return;
-            return;
-            for(let entry in monsters) {
-                let test: Monster = Monster.fromJSON(monsters[entry]);
+            // request({
+            //     method: "DELETE",
+            //     uri: baseURL + "monsters/5d50718084307736807ea161",
+            //     resolveWithFullResponse: true
+            // });
+            // return;
+            // for(let entry in monsters) {
+                return;
+                let test: Monster = Monster.loadFromJSON(monsters[0]);
 
                 let input: Request = {
                     method: "POST",
@@ -153,7 +164,7 @@ bot.on('message', async message => {
                         // TODO: handle API errors
                         console.log(err);
                     })
-            }
+            // }
             return;
             
         } 
@@ -170,9 +181,9 @@ interface Request {
 /**
  * DEPRECATED >> options() helper function, generates JSON request to be passed to request-promise
  * TS ERROR : Cannot invoke an expression whose type lacks a call signature.
- * @param method : GET, PUT, DELETE, POST
- * @param uri : end-point for API
- * @param body : JSON payload to be handled by end-point
+ * @param method GET, PUT, DELETE, POST
+ * @param uri end-point for API
+ * @param body JSON payload to be handled by end-point
  * 
  * Usage: request(options("GET", "monsters", { id: 1234 }));
  */
@@ -187,10 +198,10 @@ const options = (method: string, uri: string, body): Request => {
 
 /**
  * handleSend() helper function, does the work of sending either a RichEmbedJSON or RichEmbed in response to a Discord.Message
- * @param msg : Client message object
- * @param text : RichEmbed
- * @param json : RichEmbedJSON
- * @param secret : boolean to determine where to send message response
+ * @param msg Client message object
+ * @param text RichEmbed
+ * @param json RichEmbedJSON
+ * @param secret boolean to determine where to send message response
  */
 const handleSend = (msg, text: string, json: RichEmbedJSON, secret: boolean) => {
     if(json != null && json.desc.length > 2048) {
@@ -205,8 +216,8 @@ const handleSend = (msg, text: string, json: RichEmbedJSON, secret: boolean) => 
 
 /**
  * roll() helper function
- * @param rolls : number of times to roll a dice
- * @param sides : number of sides for dice to be rolled
+ * @param rolls number of times to roll a dice
+ * @param sides number of sides for dice to be rolled
  * 
  * @returns array of dice roll results
  */
@@ -234,7 +245,7 @@ const add = (total, current) => {
 /**
  * listStrings() helper function, reducer
  * @param total 
- * @param current : JSON Object with assumed "name" property
+ * @param current JSON Object with assumed "name" property
  */
 const listStrings = (total, current) => {
     return total + ", \n" + current["name"];
@@ -242,8 +253,8 @@ const listStrings = (total, current) => {
 
 /**
  * jsonToString() converts JSON object to formatted string
- * @param obj : JSON object
- * @param lvl : JSON object level within parent objects, i.e. - 0 means root
+ * @param obj JSON object
+ * @param lvl JSON object level within parent objects, i.e. - 0 means root
  */
 const jsonToString = (obj, lvl) => {
     let output = "";
@@ -263,9 +274,9 @@ const jsonToString = (obj, lvl) => {
 
 /**
  * stringToRichEmbed() converts string to Discord.RichEmbed
- * @param title : title
- * @param desc : description
- * @param color : (optional) color, (default) white
+ * @param title title
+ * @param desc description
+ * @param color (optional) color, (default) white
  */
 const stringToRichEmbedJSON = (title, desc, color = 'WHITE'): RichEmbedJSON => {
     let embed = {
@@ -296,15 +307,11 @@ interface RichEmbedJSON {
 
 /**
  * Lookup Functions
- * @param book : name of ancient tome to search within
- * @param search : search string
- * @param longDesc? : (optional) return long  description
+ * @param book name of ancient tome to search within
+ * @param search search string
+ * @param longDesc? (optional) return long  description
  */
-const lookup = async (book, search, longDesc): Promise<Monster>  => {
-    // TODO: handle full entries, not just lvl 0 of the JSON object
-    // TODO: handle number values and format differently than string values
-    // TODO: child json objects aren't indented correctly
-    
+const lookup = (book, search, longDesc): Promise<Monster[]>  => {    
     let ref = null;
     if(book == "spells") {
         ref = spells;
@@ -314,59 +321,19 @@ const lookup = async (book, search, longDesc): Promise<Monster>  => {
 
     let input = {
         method: "GET",
-        uri: baseURL +  book + "/" + search
+        uri: baseURL +  book + "/" + search,
+        json: true
     }
 
-    request(input)
+    return request(input)
         .then((res) => {
-            // TODO: handle API response
-            return Monster.fromJSON(JSON.parse(res));
+            if(res) {
+                return res.map(e => Monster.fromJSON(e))
+            }
         })
         .catch((err) => {
-            // TODO: handle API errors
             console.log(err);
         })
-
-    return;
-    // ------------------------------
-    // let lowercase = search.toLowerCase();
-    // let exactMatch = null;
-    // let result = [];
-    // for(let entry in ref) {
-    //     if(ref[entry]["name"] && ref[entry]["name"].toLowerCase().match(lowercase)) {
-    //         if(ref[entry]["name"] == search) {
-    //             exactMatch = ref[entry];
-    //             break;
-    //         }
-    //         result.push(ref[entry]);
-    //     }
-    // }
-
-    // let output: RichEmbedJSON = {
-    //     title: "",
-    //     desc: ""
-    // };
-    // let text = "";
-    // if(exactMatch != null) {
-    //     text += jsonToString(exactMatch, 0);
-    //     return Monster.fromJSON(exactMatch).toRichEmbedJSON();
-    // } else if(result.length > 1) {
-    //     output.title = "Found " + result.length + " results for " + search;
-    //     output.desc = result.reduce(listStrings);
-    //     return output;
-    // } else if(result.length == 1) {
-    //     return Monster.fromJSON(result[0]).toRichEmbedJSON();
-    // } else {
-    //     output.title = "No results for **" + search + "**.";
-    //     return output;
-    // }
-
-    // let firstBreak = text.indexOf('\n') + 1;
-    // let titleIndex = text.indexOf('\n', firstBreak + 1);
-    // output.title = text.substring(firstBreak, titleIndex);
-    // output.desc = text.substring(text.indexOf('\n', titleIndex), text.length);
-
-    // return output;
 }
 /**
  * paginate() : splits text into RichEmbed array, 
@@ -396,10 +363,10 @@ const paginate = (title: string, input: string): RichEmbed[] => {
 /**
  * Nifty function written by @saanuregh 
  * Link: https://www.npmjs.com/package/discord.js-pagination
- * @param msg : Client message object
- * @param pages : RichEmbed[] or MessageEmbed[]
- * @param emojiList : array of emojis
- * @param timeout : number, time limit to handle pagination
+ * @param msg Client message object
+ * @param pages RichEmbed[] or MessageEmbed[]
+ * @param emojiList array of emojis
+ * @param timeout number, time limit to handle pagination
  */
 const paginationEmbed = async (msg, pages, secret = false, emojiList = ['⏪', '⏩'], timeout = 120000) => {
 	if (!msg && !msg.channel) throw new Error('Channel is inaccessible.');
@@ -434,7 +401,7 @@ const paginationEmbed = async (msg, pages, secret = false, emojiList = ['⏪', '
 
 /**
  * helpString() returns formatted string of help manual page for given command.
- * @param cmd : command to lookup
+ * @param cmd command to lookup
  */
 const helpString = (cmd: string): string => {
     if(!help[cmd]) {

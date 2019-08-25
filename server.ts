@@ -56,13 +56,13 @@ app.get("/api/" + monsters, function (req, res) {
 
 // Get monster matching an id
 app.get("/api/" + monsters + "/:name", function (req, res) {
-  db.collection(monsters).findOne({ name: req.params.name }, function (err, doc) {
-    if (err) {
-      handleError(res, err.message, "Failed to find monster with name " + req.params.name, 500);
-    } else {
-      res.status(200).json(doc);
-    }
-  });
+  db.collection(monsters).find({ name: { $regex: req.params.name, $options: 'i' } }).toArray(function (err, docs) {
+      if(err) {
+        handleError(res, err.message, "Failed to find monster with name " + req.params.name, 500);
+      } else {
+        res.status(200).json(docs);
+      }
+    });
 });
 
 // Post a monsters
@@ -84,6 +84,16 @@ app.post("/api/" + monsters,  function (req, res) {
     } else {
       // Conflict, monster already with that name already exists
       res.status(409).json(newEntry.name);
+    }
+  });
+});
+
+app.delete("/api/" + monsters + "/:id", function (req, res) {
+  db.collection(monsters).deleteOne({ "_id": ObjectID(req.params.id) }, function (err, result) {
+    if (err) {
+      handleError(res, err.message, "Failed to delete session with id " + req.params.id, 500);
+    } else {
+      res.status(200).json("Deleted session with id " + req.params.id);
     }
   });
 });

@@ -39,4 +39,4 @@
 * setup endpoints for MongoDB
 * restructure code and helper functions in modular file structure
 * proper error throwing that trigger detailed messages returned to user
-* !lookup workflow should no longer reference the .json files
+* rework multiple results from !lookup
