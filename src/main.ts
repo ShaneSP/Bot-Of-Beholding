@@ -115,9 +115,12 @@ bot.on('message', message => {
             
             lookup(book, search, longDesc).then(p => {
                 if(p.length == 1) {
+                    console.log('monster',p)
                     handleSend(message, null, p[0].toRichEmbedJSON(), options.includes("-s"));
-                } else {
+                } else if (p.length > 1) {
                     handleSend(message, null, stringToRichEmbedJSON("Results:", p.map(e => e.name + "\n").reduce(add)), options.includes("-s"))
+                } else {
+                    handleSend(message, null, stringToRichEmbedJSON("Can't find what you're looking for. Rolled a 1 for Perception..", "", "Red"), options.includes("-s"))
                 }
             });
             
@@ -328,6 +331,7 @@ const lookup = (book, search, longDesc): Promise<Monster[]>  => {
     return request(input)
         .then((res) => {
             if(res) {
+                console.log('response',res)
                 return res.map(e => Monster.fromJSON(e))
             }
         })
@@ -350,6 +354,8 @@ const paginate = (title: string, input: string): RichEmbed[] => {
     for(let n = 0; n < numOfPages; n++) {
         pages.push(new RichEmbed().setTitle(title).setDescription(""));
     }
+
+    // TODO: fix lines and add testing
     for(let i = 0; i < lines.length; i++) {
         if(i > 29 ? i % 29 != 0 : i % 29 == i && pages[currPage].length + lines[i].length < charLimit) {
             pages[currPage].description += lines[i] + "\n";
