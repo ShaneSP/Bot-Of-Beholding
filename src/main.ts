@@ -115,7 +115,6 @@ bot.on('message', message => {
             
             lookup(book, search, longDesc).then(p => {
                 if(p.length == 1) {
-                    console.log('monster',p)
                     handleSend(message, null, p[0].toRichEmbedJSON(), options.includes("-s"));
                 } else if (p.length > 1) {
                     handleSend(message, null, stringToRichEmbedJSON("Results:", p.map(e => e.name + "\n").reduce(add)), options.includes("-s"))
@@ -331,7 +330,6 @@ const lookup = (book, search, longDesc): Promise<Monster[]>  => {
     return request(input)
         .then((res) => {
             if(res) {
-                console.log('response',res)
                 return res.map(e => Monster.fromJSON(e))
             }
         })
@@ -345,25 +343,71 @@ const lookup = (book, search, longDesc): Promise<Monster[]>  => {
  * @param title 
  * @param input 
  */
+// TODO: refactor a separate Paginator class
+// TODO: paginate doesn't include line breaks between paragraphs
 const paginate = (title: string, input: string): RichEmbed[] => {
     let pages: RichEmbed[] = [];
-    let charLimit = 2048;
+    let pageCharLimit = 2048;
+    let lineCharLimit = 82;
     let currPage = 0;
     let lines = input.split("\n");
+
+    // Sanitize lines (in-line) to be under the line character limit
+    for(let i = 0; i < lines.length; i++) {
+        if(lines[i].length > lineCharLimit) {
+            let words = lines[i].split(' ');
+            let reconstructed: string[] = [""];
+            let index = 0;
+            for(let w of words) {
+                if(reconstructed[index].length + w.length <= lineCharLimit) {
+                    reconstructed[index] = reconstructed[index].concat(" ", w);
+                } else if(w.length > lineCharLimit) {
+                    // Ignoring long words, never could understand Infernal
+                } else {
+                    reconstructed[++index] = w;
+                }
+            }
+            lines = splice(lines, i, reconstructed);
+            i += reconstructed.length - 1; // skip the lines just inserted into array
+        }
+    }
     let numOfPages = Math.ceil(lines.length / 30);
+    // Initialize RichEmbeds for each page
     for(let n = 0; n < numOfPages; n++) {
         pages.push(new RichEmbed().setTitle(title).setDescription(""));
     }
 
     // TODO: fix lines and add testing
     for(let i = 0; i < lines.length; i++) {
-        if(i > 29 ? i % 29 != 0 : i % 29 == i && pages[currPage].length + lines[i].length < charLimit) {
+        if(i > 29 ? i % 29 != 0 : i % 29 == i && pages[currPage].length + lines[i].length < pageCharLimit) {
             pages[currPage].description += lines[i] + "\n";
         } else {
             pages[++currPage].description += lines[i] + "\n";
         }
     }
     return pages;
+}
+
+/**
+ * splice() : a helper function that inserts one array into another at a given index, replacing the index it was inserted at.
+ * @param a Array to be inserted into
+ * @param index Target insert index
+ * @param b Array being inserted
+ */
+let splice = <T>(a: T[], index: number, b: T[]): T[] => {
+    if(a.length == 0) {
+        return b;
+    } else if(b.length == 0) {
+        return a;
+    }
+    if(index <= 0) {
+        return b.concat(a);
+    } else if(index >= a.length) {
+        return a.concat(b);
+    } else {
+        let front = a.slice(0, index-1);
+        return (front.concat(b)).concat(a.slice(index+1))
+    }
 }
 
 /**
