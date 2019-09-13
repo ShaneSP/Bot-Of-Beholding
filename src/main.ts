@@ -1,5 +1,6 @@
 import { Client, RichEmbed, ClientOptions, RequestHandler } from 'discord.js';
 import { Monster } from './classes/monster';
+import { Spell } from './classes/spell';
 const request = require('request-promise');
 let config = require('./config.json');
 let help = require('./data/help.json');
@@ -111,10 +112,19 @@ bot.on('message', message => {
                 handleSend(message, "Unknown text: " + book + ". Perhaps Xanathar deserves a visit.", null, options.includes("-s"));
                 return;
             }
+
+            let lookupFn;
+            if(book === "monsters") {
+                lookupFn = monsterLookup;
+            } else if(book === "spells") {
+                lookupFn = spellLookup;
+            }
             
-            lookup(book, search, monsterLookup).then(p => {
+            lookup(book, search, lookupFn).then(p => {
                 if(p.length == 1) {
                     handleSend(message, null, p[0].toRichEmbedJSON(), options.includes("-s"));
+                } else if(p.filter(e => e.name === search).length == 1) {
+                    handleSend(message, null, p.filter(e => e.name === search)[0].toRichEmbedJSON(), options.includes("-s"));
                 } else if (p.length > 1) {
                     handleSend(message, null, stringToRichEmbedJSON("Results:", p.map(e => e.name + "\n").reduce(add)), options.includes("-s"))
                 } else {
@@ -144,29 +154,28 @@ bot.on('message', message => {
             //     uri: baseURL + "monsters/5d50718084307736807ea161",
             //     resolveWithFullResponse: true
             // });
-            // return;
-            // for(let entry in monsters) {
-                return;
-                let test: Monster = Monster.loadFromJSON(monsters[0]);
-
-                let input: Request = {
-                    method: "POST",
-                    uri: baseURL +  "monsters",
-                    body: test.getJSON(),
-                    json: true
-                }
-    
-                request(input)
-                    .then((res) => {
-                        // TODO: handle API response
-                        console.log(res);
-                    })
-                    .catch((err) => {
-                        // TODO: handle API errors
-                        console.log(err);
-                    })
-            // }
             return;
+            // for(let entry in spells) {
+            //     // return;
+            //     let test: Spell = Spell.loadFromJSON(spells[entry]);
+            //     let input: Request = {
+            //         method: "POST",
+            //         uri: baseURL +  "spells",
+            //         body: test.getJSON(),
+            //         json: true
+            //     }
+    
+            //     request(input)
+            //         .then((res) => {
+            //             // TODO: handle API response
+            //             console.log(res);
+            //         })
+            //         .catch((err) => {
+            //             // TODO: handle API errors
+            //             console.log(err);
+            //         })
+            // }
+            // return;
             
         } 
     }
@@ -343,6 +352,25 @@ const monsterLookup = (book, search): Promise<Searchable<Monster>[]> => {
             console.log(err);
         })
 }
+
+const spellLookup = (book, search): Promise<Searchable<Spell>[]> => {
+    let req = {
+        method: "GET",
+        uri: baseURL + book + "/" + search,
+        json: true
+    }
+
+    return request(req)
+        .then((res) => {
+            if(res) {
+                return res.map(e => Spell.fromJSON(e))
+            }
+        })
+        .catch((err) => {
+            console.log(err);
+        })
+}
+
 /**
  * paginate() : splits text into RichEmbed array, 
  * based on 2048 char increments and 30 lines of text per RichEmbed.
