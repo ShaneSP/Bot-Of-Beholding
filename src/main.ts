@@ -52,7 +52,7 @@ bot.on('message', message => {
         case 'roll':
             // TODO?: consider adapting to accept dice modifiers?
 
-            if(args.length < 1 || !args[0].match(/[0-9]*d(4|6|8|10|12|20)/)) {
+            if(args.length < 1 || !args[0].match(/[0-9]*d[0-9]*/)) {
                 handleSend(message, "Usage: "+ help.roll.usage + "\nEntered: " + original, null, options.includes("-s"));
                 return;
             }
@@ -100,7 +100,6 @@ bot.on('message', message => {
                 return;
             }
             let book = args.shift().toLowerCase();
-            let longDesc = options.includes("-l");
             let search = "";
 
             while(args[0] && !args[0].match('-.*')) {
@@ -113,7 +112,7 @@ bot.on('message', message => {
                 return;
             }
             
-            lookup(book, search, longDesc).then(p => {
+            lookup(book, search, monsterLookup).then(p => {
                 if(p.length == 1) {
                     handleSend(message, null, p[0].toRichEmbedJSON(), options.includes("-s"));
                 } else if (p.length > 1) {
@@ -254,7 +253,7 @@ const listStrings = (total, current) => {
 }
 
 /**
- * jsonToString() converts JSON object to formatted string
+ * DEPRECATED >> jsonToString() converts JSON object to formatted string
  * @param obj JSON object
  * @param lvl JSON object level within parent objects, i.e. - 0 means root
  */
@@ -307,27 +306,34 @@ interface RichEmbedJSON {
     color?: string
 }
 
+interface Searcher<T> {
+    (book: string, search: RegExp | string): Promise<Searchable<T>[]>;
+}
+
+interface Searchable<T> {
+    name: string;
+    fromJSON(e: JSON): T;
+    toRichEmbedJSON(): RichEmbedJSON;
+}
+
+const lookup = <T>(book: string, search: RegExp | string, fun: Searcher<T>): Promise<Searchable<T>[]> => {
+    return fun(book, search);
+}
+
 /**
- * Lookup Functions
+ * Lookup Function
  * @param book name of ancient tome to search within
  * @param search search string
- * @param longDesc? (optional) return long  description
  */
-const lookup = (book, search, longDesc): Promise<Monster[]>  => {    
-    let ref = null;
-    if(book == "spells") {
-        ref = spells;
-    } else if(book == "monsters") {
-        ref = monsters;
-    }
-
-    let input = {
+// TODO: implement with generics
+const monsterLookup = (book, search): Promise<Searchable<Monster>[]> => {
+    let req = {
         method: "GET",
-        uri: baseURL +  book + "/" + search,
+        uri: baseURL + book + "/" + search,
         json: true
     }
 
-    return request(input)
+    return request(req)
         .then((res) => {
             if(res) {
                 return res.map(e => Monster.fromJSON(e))

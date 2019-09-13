@@ -33,11 +33,6 @@
         "example": "!lookup monsters Giant Crocodile",
         "options": [
             {
-                "short": "-l",
-                "name": "long description",
-                "description": "flag to return full description of search term result"
-            },
-            {
                 "short": "-s",
                 "name": "secret",
                 "description": "flag to PM results to author"
