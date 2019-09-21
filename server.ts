@@ -97,3 +97,59 @@ app.delete("/api/" + monsters + "/:id", function (req, res) {
     }
   });
 });
+
+// ========= Spells ========= //
+// Get ALL spells
+app.get("/api/" + spells, function (req, res) {
+  db.collection(spells).find({}).toArray(function (err, docs) {
+    if (err) {
+      handleError(res, err.message, "Failed to get spells", 500);
+    } else {
+      res.status(200).json(docs);
+    }
+  });
+});
+
+// Get spell matching an id
+app.get("/api/" + spells + "/:name", function (req, res) {
+  db.collection(spells).find({ name: { $regex: req.params.name, $options: 'i' } }).toArray(function (err, docs) {
+      if(err) {
+        handleError(res, err.message, "Failed to find spell with name " + req.params.name, 500);
+      } else {
+        res.status(200).json(docs);
+      }
+    });
+});
+
+// Post a spell
+app.post("/api/" + spells,  function (req, res) {
+  const newEntry = req.body;
+  if (!newEntry) {
+    handleError(res, "Missing spell", "Must provide a spell to post.", 400);
+  }
+  db.collection(spells).findOne({ name: newEntry.name }, (err, found) => {
+    if(err) handleError(found, err.message, "Failed to find existing user while creating new spell.", 500);
+    if(!found) {    
+      db.collection(spells).insertOne(newEntry, function (err, doc) {
+        if (err) {
+          handleError(res, err.message, "Failed to create new spell.", 500);
+        } else {
+          res.status(201).json(doc.ops[0]);
+        }
+      });
+    } else {
+      // Conflict, spell already with that name already exists
+      res.status(409).json(newEntry.name);
+    }
+  });
+});
+
+app.delete("/api/" + spells + "/:id", function (req, res) {
+  db.collection(spells).deleteOne({ "_id": ObjectID(req.params.id) }, function (err, result) {
+    if (err) {
+      handleError(res, err.message, "Failed to delete spell with id " + req.params.id, 500);
+    } else {
+      res.status(200).json("Deleted spell with id " + req.params.id);
+    }
+  });
+});
