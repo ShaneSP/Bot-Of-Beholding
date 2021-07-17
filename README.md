@@ -19,12 +19,6 @@
 * Usage: `!commands`
 
 ## TODO - Proposed additional functionality
-* !roll
-  * consider adapting to accept dice modifiers
-* !lookup
-  * handle number values and format differently than string values
-  * add "nice" formatting for Attributes and other stats
-  * child json objects aren't indented correctly
 * command so that users can add custom macros with existing commands
 * command that allows users to add their spells, cantrips, attacks
 * character creation command

@@ -65,7 +65,7 @@ app.get("/api/" + monsters + "/:name", function (req, res) {
     });
 });
 
-// Post a monsters
+// Post a monster
 app.post("/api/" + monsters,  function (req, res) {
   const newEntry = req.body;
   if (!newEntry) {
@@ -76,7 +76,7 @@ app.post("/api/" + monsters,  function (req, res) {
     if(!found) {    
       db.collection(monsters).insertOne(newEntry, function (err, doc) {
         if (err) {
-          handleError(res, err.message, "Failed to create new monster.", 500);
+          handleError(res, err.message, "Failed to create new monster.", 403);
         } else {
           res.status(201).json(doc.ops[0]);
         }
@@ -91,8 +91,9 @@ app.post("/api/" + monsters,  function (req, res) {
 app.delete("/api/" + monsters + "/:id", function (req, res) {
   db.collection(monsters).deleteOne({ "_id": ObjectID(req.params.id) }, function (err, result) {
     if (err) {
-      handleError(res, err.message, "Failed to delete session with id " + req.params.id, 500);
+      handleError(res, err.message, "Failed to delete session with id " + req.params.id, 404);
     } else {
+      // TODO: deleting an id that doesn't exist returns here
       res.status(200).json("Deleted session with id " + req.params.id);
     }
   });

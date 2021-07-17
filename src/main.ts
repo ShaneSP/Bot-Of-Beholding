@@ -9,6 +9,7 @@ let spells = require('./data/spells.json');
 let bot = new Client();
 const baseURL = "http://localhost:8080/api/";
 
+
 /**
  * TODO: command so that users can add custom macros with existing commands
  * TODO: command that allows users to add their spells, cantrips, attacks
@@ -21,7 +22,7 @@ const baseURL = "http://localhost:8080/api/";
  * TODO: homebrew support
  * TODO: game state
  * TODO: pagination in DM's requires multiple clicks to switch pages
- * TODO: proper error throwing that trigger detailed messages returned to user
+ * TODO: proper error throwing that trigger detailed messages returned to user/console
  * TODO: rework multiple results from !lookup
  */  
 
@@ -38,7 +39,7 @@ bot.on('message', message => {
     const command = input.shift().toLowerCase();
     const options = input.filter(e => e.startsWith("-"));
     const args = input.filter(e => !e.startsWith("-"));
-    
+    console.log(bot.guilds)
     switch(command) {
         case 'help': {
             if(args.length != 1) {
@@ -51,7 +52,7 @@ bot.on('message', message => {
         }
         break;
         case 'roll':
-            // TODO?: consider adapting to accept dice modifiers?
+            // TODO: consider adapting to accept dice modifiers
 
             if(args.length < 1 || !args[0].match(/[0-9]*d[0-9]*/)) {
                 handleSend(message, "Usage: "+ help.roll.usage + "\nEntered: " + original, null, options.includes("-s"));
@@ -97,7 +98,7 @@ bot.on('message', message => {
         break;
         case 'lookup': {
             if(args.length < 2) {
-                handleSend(message, "Usage: "+ help.lookup.usage + "\nEntered: " + original, null, options.includes("-s"));
+                handleSend(message, "Usage: " + help.lookup.usage + "\nEntered: " + original, null, options.includes("-s"));
                 return;
             }
             let book = args.shift().toLowerCase();
@@ -131,7 +132,6 @@ bot.on('message', message => {
                     handleSend(message, null, stringToRichEmbedJSON("Can't find what you're looking for. Rolled a 1 for Perception..", "", "Red"), options.includes("-s"))
                 }
             });
-            
         }
         break;
         case "commands": {
@@ -231,7 +231,7 @@ const handleSend = (msg, text: string, json: RichEmbedJSON, secret: boolean) => 
  * 
  * @returns array of dice roll results
  */
-const roll = (rolls, sides) => { 
+export const roll = (rolls, sides) => { 
     if(rolls <= 0) {
         return [];
     }
@@ -504,5 +504,3 @@ const helpString = (cmd: string): string => {
 }
 
 bot.login(config.token);
-
-module.exports = { roll, paginationEmbed }
